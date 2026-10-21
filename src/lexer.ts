@@ -127,6 +127,7 @@ SetTargetPath("scratchspace/target");
 AddPackage("bash");
 
 AddArchitecture("x86_64", "amd64");
+AddArchitecture("riscv64", "riscv64");
 
 SetInitFile("/usr/bin/bash");
 

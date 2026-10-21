@@ -1,10 +1,16 @@
 import getDebianPackages from "./distrubutions/debian.ts";
+import { resolveDependencies } from "./distrubutions/debian-resolver.ts";
+import {
+  createUsrMergeLayout,
+  downloadDeb,
+  extractDeb,
+} from "./distrubutions/debian-extract.ts";
 import { Token, TokenType } from "./lexer.ts";
 import { CallExpression } from "./parser.ts";
 
 export default class Interpretter {
     private distro?: string;
-    private repo?: string; 
+    private repo?: string;
     private targetPath?: string;
     private initFile?: string;
     private packages: string[] = [];
@@ -19,7 +25,7 @@ export default class Interpretter {
             name: "SetPackagesDistribution", arguments: [ TokenType.STRING ],
             execute(self: Interpretter, args) {
                 const distro = args[0].raw;
-                
+
                 if (!['debian'].includes(distro))
                     throw new Error("No such Linux distribution supported.");
 
@@ -79,12 +85,12 @@ export default class Interpretter {
             async execute(self) {
                 if (
                     self.architectures.length == 0 || self.packages.length == 0
-                ) 
+                )
                     throw new Error("No architectures or no packages. There is nothing to do.");
 
-                if (
-                    !self.initFile || !self.targetPath || !self.distro || !self.repo
-                )
+                const { initFile, targetPath, distro, repo } = self;
+
+                if (!initFile || !targetPath || !distro || !repo)
                     throw new Error("You have to set init file path, target path, desired distribution and desired repository in order to start building.");
 
                 console.log(`fsstrap: pre-build validation passed`);
@@ -92,14 +98,47 @@ export default class Interpretter {
                 for (const arch of self.architectures) {
                     console.log(`fsstrap: \x1b[95mstarting build for architecture ${arch.utopia}\x1b[0m`);
 
-                    const archTargetPath = `${self.targetPath}/internal.${arch.utopia}.${arch.packages}`;
+                    const archTargetPath = `${targetPath}/internal.${arch.utopia}.${arch.packages}`;
                     Deno.mkdirSync(archTargetPath, {
                         recursive: true
                     });
 
                     console.log(`fsstrap: getting package list`);
 
-                    const packageList = await getDebianPackages(archTargetPath + "/package-index.xz"); 
+                    const packageList = await getDebianPackages(archTargetPath, repo, arch.packages);
+
+                    console.log(`fsstrap: resolving dependencies`);
+
+                    const resolved = resolveDependencies(packageList, self.packages);
+
+                    console.log(`fsstrap: ${resolved.length} packages to install (${self.packages.length} requested)`);
+
+                    const debsDir = `${archTargetPath}/debs`;
+                    const initramfsPath = `${targetPath}/initramfses/initramfs-${arch.utopia}`;
+
+                    Deno.mkdirSync(debsDir, { recursive: true });
+
+                    // clean tree so stale files don't leak between builds
+                    try { Deno.removeSync(initramfsPath, { recursive: true }); } catch { /* didn't exist */ }
+                    Deno.mkdirSync(initramfsPath, { recursive: true });
+
+                    createUsrMergeLayout(initramfsPath);
+
+                    for (const pkg of resolved) {
+                        console.log(`fsstrap: installing ${pkg.package} ${pkg.version}`);
+
+                        const debPath = await downloadDeb(pkg, debsDir);
+                        await extractDeb(debPath, initramfsPath);
+                    }
+
+                    const initPath = `${initramfsPath}/${initFile.replace(/^\/+/, "")}`;
+                    try {
+                        Deno.statSync(initPath);
+                    } catch {
+                        throw new Error(`init file ${initFile} not found in ${initramfsPath} after installing packages`);
+                    }
+
+                    console.log(`fsstrap: \x1b[95mfinished ${arch.utopia}\x1b[0m -> ${initramfsPath}`);
                 }
             },
         }
@@ -110,20 +149,20 @@ export default class Interpretter {
     async execute() {
         for (const expr of this.exprs) {
             const fn = this.functions.find((f) => f.name == expr.name);
-            
-            if (!fn) 
+
+            if (!fn)
                 throw new Error(`${expr.name}: no such function`);
 
-            if (fn.arguments.length != expr.arguments.length) 
+            if (fn.arguments.length != expr.arguments.length)
                 throw new Error(`${expr.name}: expected ${fn.arguments.length} arguments, found ${expr.arguments.length}`);
 
             for (let i = 0; i < fn.arguments.length; i++) {
                 const argType = fn.arguments[i];
 
-                if (argType != expr.arguments[i]?.type) 
+                if (argType != expr.arguments[i]?.type)
                     throw new Error(`${expr.name}: argument type mismatch: expected ${TokenType[argType]}`);
             }
-            
+
             await fn.execute(this, expr.arguments);
         }
 

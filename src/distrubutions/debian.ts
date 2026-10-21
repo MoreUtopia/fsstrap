@@ -1,5 +1,3 @@
-
-
 import { mkdir, writeFile } from "node:fs/promises";
 import { dirname } from "node:path";
 import { execFile } from "node:child_process";
@@ -7,10 +5,9 @@ import { promisify } from "node:util";
 
 const execFileAsync = promisify(execFile);
 
-const REPOSITORY = "https://deb.debian.org/debian";
-const SUITE = "stable";
+const DEFAULT_MIRROR = "https://deb.debian.org/debian";
+const DEFAULT_SUITE = "stable";
 const COMPONENT = "main";
-const ARCHITECTURE = "amd64";
 
 export interface DebianPackage {
   package: string;
@@ -21,27 +18,38 @@ export interface DebianPackage {
   fields: Record<string, string>;
 }
 
-export default async function getDebianPackages(
-  path: string
+// "stable" / "trixie"                  -> default mirror, that suite
+// "https://ftp.pl.debian.org/debian"   -> that mirror, stable
+function parseRepo(repo: string): { mirror: string; suite: string } {
+  if (/^https?:\/\//.test(repo)) {
+    return { mirror: repo.replace(/\/+$/, ""), suite: DEFAULT_SUITE };
+  }
+  return { mirror: DEFAULT_MIRROR, suite: repo };
+}
+
+async function fetchIndex(
+  mirror: string,
+  suite: string,
+  arch: string,
+  dest: string,
 ): Promise<DebianPackage[]> {
   const indexUrl =
-    `${REPOSITORY}/dists/${SUITE}/${COMPONENT}` +
-    `/binary-${ARCHITECTURE}/Packages.xz`;
+    `${mirror}/dists/${suite}/${COMPONENT}/binary-${arch}/Packages.xz`;
 
   // Download and save the compressed package index.
   const response = await fetch(indexUrl);
 
   if (!response.ok) {
     throw new Error(
-      `Failed to download package index: HTTP ${response.status}`
+      `Failed to download package index ${indexUrl}: HTTP ${response.status}`,
     );
   }
 
-  await mkdir(dirname(path), { recursive: true });
-  await writeFile(path, Buffer.from(await response.arrayBuffer()));
+  await mkdir(dirname(dest), { recursive: true });
+  await writeFile(dest, Buffer.from(await response.arrayBuffer()));
 
   // Decompress the saved index.
-  const { stdout } = await execFileAsync("xz", ["-dc", path], {
+  const { stdout } = await execFileAsync("xz", ["-dc", dest], {
     encoding: "utf8",
     maxBuffer: 512 * 1024 * 1024,
   });
@@ -82,10 +90,28 @@ export default async function getDebianPackages(
       version: fields.Version,
       architecture: fields.Architecture ?? "all",
       filename: fields.Filename,
-      downloadUrl: `${REPOSITORY}/${fields.Filename}`,
+      downloadUrl: `${mirror}/${fields.Filename}`,
       fields,
     });
   }
 
   return packages;
+}
+
+// dir:  where the downloaded indexes are stored
+// repo: suite name ("stable") or mirror URL
+// arch: Debian architecture name, e.g. amd64
+export default async function getDebianPackages(
+  dir: string,
+  repo: string,
+  arch: string,
+): Promise<DebianPackage[]> {
+  const { mirror, suite } = parseRepo(repo);
+
+  const [archPkgs, allPkgs] = await Promise.all([
+    fetchIndex(mirror, suite, arch, `${dir}/Packages-${arch}.xz`),
+    fetchIndex(mirror, suite, "all", `${dir}/Packages-all.xz`),
+  ]);
+
+  return [...archPkgs, ...allPkgs];
 }
