@@ -124,10 +124,12 @@ SetPackagesRepo("stable");
 
 SetTargetPath("scratchspace/target");
 
-AddPackage("bash");
-
 AddArchitecture("x86_64", "amd64");
 AddArchitecture("riscv64", "riscv64");
+
+SetArchitectureCrossCompile("riscv64", "riscv64-elf-");
+
+AddPackage("bash");
 
 SetInitFile("/usr/bin/bash");
 

@@ -7,6 +7,7 @@ import {
 } from "./distrubutions/debian-extract.ts";
 import { Token, TokenType } from "./lexer.ts";
 import { CallExpression } from "./parser.ts";
+import { dirname, fromFileUrl, resolve } from "@std/path";
 
 export default class Interpretter {
     private distro?: string;
@@ -14,7 +15,7 @@ export default class Interpretter {
     private targetPath?: string;
     private initFile?: string;
     private packages: string[] = [];
-    private architectures: { utopia: string; packages: string }[] = [];
+    private architectures: { utopia: string; packages: string; crossCompiler?: string; }[] = [];
 
     private functions: {
         name: string;
@@ -81,6 +82,21 @@ export default class Interpretter {
             },
         },
         {
+            name: "SetArchitectureCrossCompile",
+            arguments: [TokenType.STRING, TokenType.STRING],
+            execute(self, args) {
+                const arch = self.architectures.find(
+                    a => a.utopia === args[0].raw
+                );
+        
+                if (!arch) {
+                    throw new Error(`Architecture not found: ${args[0].raw}`);
+                }
+        
+                arch.crossCompiler = args[1].raw;
+            },
+        },
+        {
             name: "Build", arguments: [],
             async execute(self) {
                 if (
@@ -131,11 +147,36 @@ export default class Interpretter {
                         await extractDeb(debPath, initramfsPath);
                     }
 
-                    const initPath = `${initramfsPath}/${initFile.replace(/^\/+/, "")}`;
+                    const scriptDir = dirname(fromFileUrl(import.meta.url));
+                    const pid1Dir = resolve(scriptDir, "pid1");
+                    
+                    const initPath = resolve(initramfsPath, initFile.replace(/^\/+/, ""));
+                    
                     try {
                         Deno.statSync(initPath);
                     } catch {
-                        throw new Error(`init file ${initFile} not found in ${initramfsPath} after installing packages`);
+                        throw new Error(
+                            `init file ${initFile} not found in ${initramfsPath} after installing packages`,
+                        );
+                    }
+                    
+                    console.log(`fsstrap: building pid1 for ${arch.utopia}`);
+                    
+                    const command = new Deno.Command("make", {
+                        args: [
+                            "-C", pid1Dir,
+                            `INIT_PATH=${initPath}`,
+                            ...(arch.crossCompiler ? [ `CROSS_COMPILE=${arch.crossCompiler}` ] : []),
+                            `OUT_PATH=${resolve(initramfsPath, "init")}`,
+                        ],
+                        stdout: "inherit",
+                        stderr: "inherit",
+                    });
+                    
+                    const { code } = await command.output();
+                    
+                    if (code !== 0) {
+                        throw new Error(`make pid1 failed with exit code ${code}`);
                     }
 
                     console.log(`fsstrap: \x1b[95mfinished ${arch.utopia}\x1b[0m -> ${initramfsPath}`);
