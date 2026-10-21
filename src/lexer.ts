@@ -6,6 +6,7 @@ export enum TokenType {
     RPAREN,
     IDENTIFIER,
     SEMICOLON,
+    COLON,
     STRING,
     UNKNOWN
 }
@@ -100,6 +101,10 @@ export default function performLexing(module: string): Token[] {
             output.push({ type: TokenType.SEMICOLON, raw: char });
             break;
 
+        case ',':
+            output.push({ type: TokenType.COLON, raw: char });
+            break;
+
         default:
             output.push({ type: TokenType.UNKNOWN, raw: char });
             break;
@@ -116,7 +121,15 @@ new Interpretter(parse(performLexing(
 
 SetPackagesDistribution("debian");
 SetPackagesRepo("stable");
+
+SetTargetPath("scratchspace/target");
+
 AddPackage("bash");
+
+AddArchitecture("x86_64", "amd64");
+
 SetInitFile("/usr/bin/bash");
+
+Build();
 `
 ))).execute();

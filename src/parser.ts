@@ -42,6 +42,8 @@ export default function parse(tokens: Token[]): CallExpression[] {
             if (token.type === TokenType.STRING || token.type === TokenType.IDENTIFIER) {
                 args.push(token);
                 pos++; continue;
+            } else if (token.type == TokenType.COLON) {
+                pos++; continue;
             } else {
                 throw new Error(
                     `Unexpected token ${JSON.stringify(token.raw)} at index ${pos}`
