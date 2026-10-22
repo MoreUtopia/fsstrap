@@ -1,3 +1,6 @@
 #!/usr/bin/env -S bash --posix
 
-deno run -A src/driver.ts $@
+SCRIPT_DIR="$(dirname -- "${BASH_SOURCE[0]}")"
+SCRIPT_DIR="${SCRIPT_DIR%/}/"
+
+deno run -A ${SCRIPT_DIR}src/driver.ts $@

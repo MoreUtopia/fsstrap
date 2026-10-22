@@ -1,17 +1,26 @@
-# This is a comment!
-
+# You need to set the distribution and its repository used for packages.
+# For now, fsstrap utility only supports Debian, but that may change in the 
+# near future.
 SetPackagesDistribution("debian");
 SetPackagesRepo("stable");
 
+# Self-explanatory.
 SetTargetPath("scratchspace/target");
 
+# Add architectures for which the initramfses will be built. First argument
+# specifies the architecture name recognized by the kernel, the second - recognized
+# by package repository.
 AddArchitecture("x86_64", "amd64");
 AddArchitecture("riscv64", "riscv64");
 
+# Cross-compilers for different architectures
 SetArchitectureCrossCompile("riscv64", "riscv64-elf-");
 
+# What to include in the initramfs? 
 AddPackage("bash");
 
+# What executable should PID 1 launch?
 SetInitFile("/usr/bin/bash");
 
+# Perform building.
 Build();
