@@ -246,10 +246,43 @@ static inline uint64_t __libc_syscall6(
     return ret;
 }
 
-void _start() {
-    char* shit = "launching shell\n";
+size_t strlen(const char *str) {
+    const char *p = str;
+
+    while (*p)
+        p++;
+
+    return p - str;
+}
+
+void writet(char* what) {
+    static char nl = '\n';
+    __libc_syscall3(5, 2, (uintptr_t)what, strlen(what));
+    __libc_syscall3(5, 2, (uintptr_t)&nl, 1);
+}
+
+int main() {
     char* init_path = INIT_PATH;
-    __libc_syscall3(5, 2, (uintptr_t)shit, 16);
-    __libc_syscall2(2001, (uintptr_t)init_path, 1);
+    
+    writet("launching init executable: " INIT_PATH);
+
+    uintptr_t res = __libc_syscall2(2001, (uintptr_t)init_path, 1);
+
+    if (res == -3) {
+        writet("no such executable");
+        return 1;
+    } else if (res == -8) {
+        writet("bad executable");
+        return -1;
+    } else if (res < 0) {
+        writet("unknown error");
+        return -1;
+    }
+
     while (1) continue;
 } 
+
+void _start() {
+    main();
+    __libc_syscall0(2000);
+}

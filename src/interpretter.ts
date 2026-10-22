@@ -165,7 +165,7 @@ export default class Interpretter {
                     const command = new Deno.Command("make", {
                         args: [
                             "-C", pid1Dir,
-                            `INIT_PATH=${initPath}`,
+                            `INIT_PATH=${initFile}`,
                             ...(arch.crossCompiler ? [ `CROSS_COMPILE=${arch.crossCompiler}` ] : []),
                             `OUT_PATH=${resolve(initramfsPath, "init")}`,
                         ],
