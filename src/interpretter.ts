@@ -1,10 +1,10 @@
-import getDebianPackages from "./distrubutions/debian.ts";
-import { resolveDependencies } from "./distrubutions/debian-resolver.ts";
+import getDebianPackages from "./distributions/debian.ts";
+import { resolveDependencies } from "./distributions/debian-resolver.ts";
 import {
   createUsrMergeLayout,
   downloadDeb,
   extractDeb,
-} from "./distrubutions/debian-extract.ts";
+} from "./distributions/debian-extract.ts";
 import { Token, TokenType } from "./lexer.ts";
 import { CallExpression } from "./parser.ts";
 import { dirname, fromFileUrl, resolve } from "@std/path";

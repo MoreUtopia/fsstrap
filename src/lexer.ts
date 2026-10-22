@@ -1,6 +1,3 @@
-import Interpretter from "./interpretter.ts";
-import parse from "./parser.ts";
-
 export enum TokenType {
     LPAREN,
     RPAREN,
@@ -115,24 +112,3 @@ export default function performLexing(module: string): Token[] {
 
     return output;
 }
-
-new Interpretter(parse(performLexing(
-`# This is a comment!
-
-SetPackagesDistribution("debian");
-SetPackagesRepo("stable");
-
-SetTargetPath("scratchspace/target");
-
-AddArchitecture("x86_64", "amd64");
-AddArchitecture("riscv64", "riscv64");
-
-SetArchitectureCrossCompile("riscv64", "riscv64-elf-");
-
-AddPackage("bash");
-
-SetInitFile("/usr/bin/bash");
-
-Build();
-`
-))).execute();
