@@ -18,6 +18,14 @@ try {
             "Fsstrap - an actually good build-system for bootstraping Utopia-based", 
             "initramfses using Debian's packages.",
             "",
+            "This program is free software; you can redistribute it and/or modify",
+            "it under the terms of the MIT license.",
+            "",
+            "This program is distributed in the hope that it will be useful,",
+            "but WITHOUT ANY WARRANTY; without even the implied warranty of",
+            "MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the MIT",
+            "License for details.",
+            "",
             "\x1b[1mversion:\x1b[0m 1.0.0",
             "\x1b[1mgithub:\x1b[0m https://github.com/MoreUtopia/fsstrap"
         ].join('\n')); break;
