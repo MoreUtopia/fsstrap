@@ -1,0 +1,3 @@
+[submodule "external/finit"]
+	path = external/finit
+	url = https://github.com/MoreUtopia/finit

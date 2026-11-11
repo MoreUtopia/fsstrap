@@ -148,7 +148,7 @@ export default class Interpretter {
                     }
 
                     const scriptDir = dirname(fromFileUrl(import.meta.url));
-                    const pid1Dir = resolve(scriptDir, "pid1");
+                    const pid1Dir = resolve(scriptDir, "../external/finit");
                     
                     const initPath = resolve(initramfsPath, initFile.replace(/^\/+/, ""));
                     
